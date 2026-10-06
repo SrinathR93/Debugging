@@ -199,7 +199,7 @@ function IntroScreen({ comp, questions, onStart, onBack }) {
 
 function QuestionPanel({ question: q, idx, total, existingAnswer, userId, competitionId, onAnswered, onNext, onPrev }) {
   const [input, setInput] = useState(existingAnswer?.userAnswer || '');
-  const [result, setResult] = useState(existingAnswer?.result || null);
+  const [result, setResult] = useState(existingAnswer?.submitted ? existingAnswer : null);
   const [submitting, setSubmitting] = useState(false);
   const submitted = !!result;
 

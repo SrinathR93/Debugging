@@ -200,12 +200,10 @@ export function submitAnswer(userId, competitionId, questionId, userAnswer) {
     submittedAt: new Date().toISOString(),
   };
   if (existing) {
-    const updated = ss.map(s => (s.userId === userId && s.competitionId === competitionId && s.questionId === questionId) ? submission : s);
-    saveSubmissions(updated);
-  } else {
-    ss.push(submission);
-    saveSubmissions(ss);
+    return { isCorrect: existing.isCorrect, marks: existing.marks, correctAnswer: q.answer, explanation: q.explanation };
   }
+  ss.push(submission);
+  saveSubmissions(ss);
   return { isCorrect, marks: submission.marks, correctAnswer: q.answer, explanation: q.explanation };
 }
 
