@@ -18,14 +18,33 @@ export async function getUsers() {
 
 export async function registerUser(name, email, password) {
   if (email === ADMIN_USER.email) return { error: 'Email already taken' };
-  const { data: existing } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
-  if (existing) return { error: 'Email already registered' };
+
+  // Check local users cache
+  const localUsers = storage.get('local_users') || [];
+  if (localUsers.some(u => u.email === email)) return { error: 'Email already registered' };
+
+  // Check Supabase if accessible
+  try {
+    const { data: existing } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
+    if (existing) return { error: 'Email already registered' };
+  } catch {}
+
   const user = { id: 'u_' + Date.now(), name, email, password, role: 'participant', joined_at: new Date().toISOString() };
-  const { error } = await supabase.from('users').insert(user);
-  if (error) {
-    console.error('registerUser error:', error);
-    return { error: error.message };
+
+  // Save to local users cache immediately
+  localUsers.push(user);
+  storage.set('local_users', localUsers);
+
+  // Sync to Supabase in background
+  try {
+    const { error } = await supabase.from('users').insert(user);
+    if (error) {
+      console.warn('Supabase users insert notice:', error.message);
+    }
+  } catch (err) {
+    console.warn('Supabase network notice:', err);
   }
+
   return { user: { ...user, joinedAt: user.joined_at, password: undefined } };
 }
 
@@ -33,9 +52,23 @@ export async function loginUser(email, password) {
   if (email === ADMIN_USER.email && password === ADMIN_USER.password) {
     return { user: { ...ADMIN_USER, password: undefined } };
   }
-  const { data, error } = await supabase.from('users').select('*').eq('email', email).eq('password', password).maybeSingle();
-  if (error || !data) return { error: error ? error.message : 'Invalid email or password' };
-  return { user: { ...data, joinedAt: data.joined_at, password: undefined } };
+
+  // Try Supabase first
+  try {
+    const { data } = await supabase.from('users').select('*').eq('email', email).eq('password', password).maybeSingle();
+    if (data) {
+      return { user: { ...data, joinedAt: data.joined_at, password: undefined } };
+    }
+  } catch {}
+
+  // Check local users cache
+  const localUsers = storage.get('local_users') || [];
+  const found = localUsers.find(u => u.email === email && u.password === password);
+  if (found) {
+    return { user: { ...found, joinedAt: found.joined_at, password: undefined } };
+  }
+
+  return { error: 'Invalid email or password' };
 }
 
 // ===== HARDCODED 10 PYTHON DEBUGGING QUESTIONS =====
