@@ -667,6 +667,7 @@ function AdminLeaderboard() {
               <th>Participant</th>
               <th>Score</th>
               <th>Correct</th>
+              <th>Tab Switches</th>
               <th>Last Submission</th>
             </tr>
           </thead>
@@ -676,12 +677,19 @@ function AdminLeaderboard() {
                 <td>{p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : `#${p.rank}`}</td>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div className="avatar" style={{ width: 28, height: 28, fontSize: 12 }}>{p.name[0]}</div>
+                    <div className="avatar" style={{ width: 28, height: 28, fontSize: 12 }}>{(p.name || 'U')[0]}</div>
                     <span style={{ fontWeight: 600 }}>{p.name}</span>
                   </div>
                 </td>
                 <td style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 18 }}>{p.score}</td>
                 <td style={{ color: 'var(--success)', fontWeight: 700 }}>{p.correct}</td>
+                <td>
+                  {p.tabSwitches > 0 ? (
+                    <span className="badge badge-danger">⚠️ {p.tabSwitches}</span>
+                  ) : (
+                    <span className="badge badge-success">✓ 0</span>
+                  )}
+                </td>
                 <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.lastTime ? new Date(p.lastTime).toLocaleTimeString() : '-'}</td>
               </tr>
             ))}

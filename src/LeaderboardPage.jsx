@@ -101,6 +101,7 @@ export function LeaderboardPage({ competitionId: initialCompId }) {
                   <th>Participant</th>
                   <th>Score</th>
                   <th>Correct</th>
+                  <th>Tab Switches</th>
                   <th>Completion Time</th>
                 </tr>
               </thead>
@@ -129,6 +130,17 @@ export function LeaderboardPage({ competitionId: initialCompId }) {
                     <td>
                       <span style={{ color: 'var(--success)', fontWeight: 700 }}>{p.correct}</span>
                       <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> correct</span>
+                    </td>
+                    <td>
+                      {p.tabSwitches > 0 ? (
+                        <span className="badge badge-danger" style={{ fontWeight: 600 }} title="Tab switch violation detected">
+                          ⚠️ {p.tabSwitches} switches
+                        </span>
+                      ) : (
+                        <span className="badge badge-success" style={{ fontWeight: 600 }}>
+                          ✓ 0 (Clean)
+                        </span>
+                      )}
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>
                       {p.lastTime ? new Date(p.lastTime).toLocaleTimeString() : '-'}

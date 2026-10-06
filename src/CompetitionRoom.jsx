@@ -1,6 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp } from './context';
-import { getQuestionSafe, getCompetitionById, submitAnswer, getUserCompResult, formatTime, difficultyColor } from './store';
+import {
+  getQuestionSafe,
+  submitAnswer,
+  getUserCompResult,
+  formatTime,
+  difficultyColor,
+  shuffleForUser,
+  recordTabSwitch,
+  getTabSwitches,
+} from './store';
 import { CodeBlock } from './CodeBlock';
 
 const STATES = { INTRO: 'intro', PLAYING: 'playing', FINISHED: 'finished' };
@@ -15,14 +24,46 @@ export function CompetitionRoom({ competition, onFinish, onBack }) {
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({}); // qid -> { text, submitted, result }
   const [timeLeft, setTimeLeft] = useState(totalSeconds);
+  const [tabSwitches, setTabSwitches] = useState(() => getTabSwitches(user?.id, comp.id));
   const timerRef = useRef(null);
   const startTimeRef = useRef(null);
 
   useEffect(() => {
-    // Load questions async (safe - no answers)
+    // Load questions async and shuffle deterministically for this specific user
     Promise.all(comp.questions.map(id => getQuestionSafe(id)))
-      .then(qs => setQuestions(qs.filter(Boolean)));
-  }, [comp]);
+      .then(qs => {
+        const valid = qs.filter(Boolean);
+        const shuffled = shuffleForUser(valid, user?.id || 'guest');
+        setQuestions(shuffled);
+      });
+  }, [comp, user]);
+
+  // Tab switch detection (Anti-cheat)
+  useEffect(() => {
+    if (phase !== STATES.PLAYING) return;
+
+    function handleVisibility() {
+      if (document.hidden) {
+        const count = recordTabSwitch(user?.id, comp.id);
+        setTabSwitches(count);
+        showToast(`⚠️ Warning! Tab switch detected (${count}x)! This will be recorded on the leaderboard.`, 'error');
+      }
+    }
+
+    function handleWindowBlur() {
+      const count = recordTabSwitch(user?.id, comp.id);
+      setTabSwitches(count);
+      showToast(`⚠️ Warning! Window lost focus (${count}x)! Recorded on leaderboard.`, 'error');
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('blur', handleWindowBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [phase, user, comp.id, showToast]);
 
   function startCompetition() {
     setPhase(STATES.PLAYING);
@@ -54,7 +95,22 @@ export function CompetitionRoom({ competition, onFinish, onBack }) {
   const q = questions[currentIdx];
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 64px)', background: 'var(--bg-primary)' }}>
+    <div
+      style={{
+        minHeight: 'calc(100vh - 64px)',
+        background: 'var(--bg-primary)',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        showToast('⚠️ Right-click context menu is disabled in test mode!', 'error');
+      }}
+      onCopy={(e) => {
+        e.preventDefault();
+        showToast('⚠️ Copying is disabled in test mode!', 'error');
+      }}
+    >
       {/* Timer Bar */}
       <div style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)', padding: '12px 0' }}>
         <div className="container">
@@ -67,6 +123,15 @@ export function CompetitionRoom({ competition, onFinish, onBack }) {
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                 {Object.keys(answers).length}/{questions.length} answered
               </div>
+              {tabSwitches > 0 ? (
+                <span className="badge badge-danger" style={{ fontWeight: 700 }} title="Anti-cheat: Tab switch detected">
+                  ⚠️ {tabSwitches} Tab Switch{tabSwitches > 1 ? 'es' : ''}
+                </span>
+              ) : (
+                <span className="badge badge-success" title="Anti-cheat: No tab switches">
+                  ✓ Clean Tab
+                </span>
+              )}
               <div className={`timer-display ${timerClass}`} style={{ fontSize: 22, fontFamily: 'var(--font-mono)' }}>
                 ⏱ {formatTime(timeLeft)}
               </div>
@@ -253,6 +318,12 @@ function QuestionPanel({ question: q, idx, total, existingAnswer, userId, compet
           value={input}
           onChange={e => !submitted && setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={e => {
+            e.preventDefault();
+            alert('⚠️ Pasting is disabled in test mode! Please type your answer manually.');
+          }}
+          onCopy={e => e.preventDefault()}
+          onCut={e => e.preventDefault()}
           readOnly={submitted}
           rows={3}
         />
@@ -333,8 +404,8 @@ function ResultsScreen({ comp, userId, onBack, onLeaderboard }) {
           {[
             { label: 'Attempted', value: result.attempted, total: result.totalQ, color: 'var(--accent)' },
             { label: 'Correct', value: result.correct, total: result.totalQ, color: 'var(--success)' },
-            { label: 'Wrong', value: result.wrong, total: result.totalQ, color: 'var(--danger)' },
             { label: 'Accuracy', value: `${result.accuracy}%`, color: result.accuracy >= 50 ? 'var(--success)' : 'var(--warning)' },
+            { label: 'Tab Switches', value: result.tabSwitches || 0, color: (result.tabSwitches > 0) ? 'var(--danger)' : 'var(--success)' },
           ].map(s => (
             <div key={s.label} className="card" style={{ textAlign: 'center', padding: 16 }}>
               <div style={{ fontSize: 26, fontWeight: 800, color: s.color }}>{s.value}</div>

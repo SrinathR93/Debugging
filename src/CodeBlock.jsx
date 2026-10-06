@@ -75,7 +75,19 @@ export function CodeBlock({ code, language = 'python', showLineNumbers = true })
   const highlighted = tokenize(code, lang);
 
   return (
-    <div className="code-container" style={{ fontSize: '14px' }}>
+    <div
+      className="code-container"
+      style={{
+        fontSize: '14px',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none',
+      }}
+      onCopy={e => e.preventDefault()}
+      onCut={e => e.preventDefault()}
+      onContextMenu={e => e.preventDefault()}
+    >
       <div className="code-header">
         <div className="code-dots">
           <div className="code-dot code-dot-red" />
