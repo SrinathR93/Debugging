@@ -6,7 +6,7 @@ export function ParticipantDashboard({ onJoin }) {
   const { user } = useApp();
   const [competitions, setCompetitions] = useState([]);
 
-  useEffect(() => { setCompetitions(getCompetitions()); }, []);
+  useEffect(() => { getCompetitions().then(setCompetitions); }, []);
 
   const live = competitions.filter(c => c.status === 'live');
   const upcoming = competitions.filter(c => c.status === 'upcoming');

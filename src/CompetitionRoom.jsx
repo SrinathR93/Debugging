@@ -19,9 +19,9 @@ export function CompetitionRoom({ competition, onFinish, onBack }) {
   const startTimeRef = useRef(null);
 
   useEffect(() => {
-    // Load questions (safe - no answers)
-    const qs = comp.questions.map(id => getQuestionSafe(id)).filter(Boolean);
-    setQuestions(qs);
+    // Load questions async (safe - no answers)
+    Promise.all(comp.questions.map(id => getQuestionSafe(id)))
+      .then(qs => setQuestions(qs.filter(Boolean)));
   }, [comp]);
 
   function startCompetition() {
@@ -203,10 +203,10 @@ function QuestionPanel({ question: q, idx, total, existingAnswer, userId, compet
   const [submitting, setSubmitting] = useState(false);
   const submitted = !!result;
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!input.trim() || submitting || submitted) return;
     setSubmitting(true);
-    const res = submitAnswer(userId, competitionId, q.id, input.trim());
+    const res = await submitAnswer(userId, competitionId, q.id, input.trim());
     setResult(res);
     onAnswered({ ...res, userAnswer: input.trim(), submitted: true });
     setSubmitting(false);
@@ -308,8 +308,7 @@ function ResultsScreen({ comp, userId, onBack, onLeaderboard }) {
   const [result, setResult] = useState(null);
 
   useEffect(() => {
-    const r = getUserCompResult(userId, comp.id);
-    setResult(r);
+    getUserCompResult(userId, comp.id).then(setResult);
   }, []);
 
   if (!result) return <div className="loading"><div className="loading-spinner" /></div>;

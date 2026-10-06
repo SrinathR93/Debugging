@@ -3,7 +3,7 @@ import { useApp } from './context';
 import { loginUser, registerUser } from './store';
 
 export function AuthPage() {
-  const [mode, setMode] = useState('login'); // login | register
+  const [mode, setMode] = useState('login');
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,21 +15,19 @@ export function AuthPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setTimeout(() => {
-      if (mode === 'login') {
-        const res = loginUser(form.email.trim(), form.password);
-        if (res.error) { setError(res.error); setLoading(false); return; }
-        login(res.user);
-        showToast(`Welcome back, ${res.user.name}!`, 'success');
-      } else {
-        if (!form.name.trim()) { setError('Name is required'); setLoading(false); return; }
-        const res = registerUser(form.name.trim(), form.email.trim(), form.password);
-        if (res.error) { setError(res.error); setLoading(false); return; }
-        login(res.user);
-        showToast(`Welcome, ${res.user.name}! Account created.`, 'success');
-      }
-      setLoading(false);
-    }, 400);
+    if (mode === 'login') {
+      const res = await loginUser(form.email.trim(), form.password);
+      if (res.error) { setError(res.error); setLoading(false); return; }
+      login(res.user);
+      showToast(`Welcome back, ${res.user.name}!`, 'success');
+    } else {
+      if (!form.name.trim()) { setError('Name is required'); setLoading(false); return; }
+      const res = await registerUser(form.name.trim(), form.email.trim(), form.password);
+      if (res.error) { setError(res.error); setLoading(false); return; }
+      login(res.user);
+      showToast(`Welcome, ${res.user.name}! Account created.`, 'success');
+    }
+    setLoading(false);
   }
 
   return (
@@ -43,7 +41,6 @@ export function AuthPage() {
           <p>Predict the output. Climb the leaderboard.</p>
         </div>
 
-        {/* Tab switcher */}
         <div style={{ display: 'flex', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', padding: 4, marginBottom: 24 }}>
           {['login', 'register'].map(m => (
             <button key={m} className={`btn ${mode === m ? 'btn-primary' : 'btn-ghost'}`}
@@ -75,8 +72,6 @@ export function AuthPage() {
             {loading ? <span className="spin" style={{ display: 'inline-block', width: 18, height: 18, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%' }} /> : mode === 'login' ? '→ Sign In' : '→ Create Account'}
           </button>
         </form>
-
-
       </div>
     </div>
   );

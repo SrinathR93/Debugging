@@ -72,10 +72,17 @@ export function AdminDashboard() {
 
 // ===== ADMIN OVERVIEW =====
 function AdminOverview({ onNav }) {
-  const questions = getQuestions();
-  const competitions = getCompetitions();
-  const users = getUsers();
-  const submissions = getSubmissions();
+  const [questions, setQuestions] = useState([]);
+  const [competitions, setCompetitions] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+
+  useEffect(() => {
+    getQuestions().then(setQuestions);
+    getCompetitions().then(setCompetitions);
+    getUsers().then(setUsers);
+    getSubmissions().then(setSubmissions);
+  }, []);
 
   const stats = [
     { label: 'Questions', value: questions.length, icon: '📝', color: 'var(--accent)', sub: `${questions.filter(q => q.enabled).length} active` },
@@ -126,20 +133,21 @@ function AdminOverview({ onNav }) {
 
 // ===== QUESTIONS VIEW =====
 function QuestionsView({ onNav }) {
-  const [questions, setQuestions] = useState(getQuestions());
+  const [questions, setQuestions] = useState([]);
   const [filter, setFilter] = useState({ lang: '', diff: '', search: '' });
   const { showToast } = useApp();
 
-  function refresh() { setQuestions(getQuestions()); }
+  function refresh() { getQuestions().then(setQuestions); }
+  useEffect(() => { refresh(); }, []);
 
-  function handleDelete(id) {
-    deleteQuestion(id);
+  async function handleDelete(id) {
+    await deleteQuestion(id);
     refresh();
     showToast('Question deleted', 'info');
   }
 
-  function handleToggle(id, enabled) {
-    updateQuestion(id, { enabled: !enabled });
+  async function handleToggle(id, enabled) {
+    await updateQuestion(id, { enabled: !enabled });
     refresh();
   }
 
@@ -226,11 +234,11 @@ function QuestionForm({ onNav, editTarget }) {
 
   function handle(e) { setForm(f => ({ ...f, [e.target.name]: e.target.name === 'marks' ? Number(e.target.value) : e.target.value })); }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     if (!form.title || !form.code || !form.answer) { showToast('Fill required fields', 'error'); return; }
-    if (isEdit) { updateQuestion(editTarget.id, form); showToast('Question updated!', 'success'); }
-    else { addQuestion(form); showToast('Question added!', 'success'); }
+    if (isEdit) { await updateQuestion(editTarget.id, form); showToast('Question updated!', 'success'); }
+    else { await addQuestion(form); showToast('Question added!', 'success'); }
     onNav(VIEWS.QUESTIONS);
   }
 
@@ -345,19 +353,20 @@ function QuestionForm({ onNav, editTarget }) {
 
 // ===== COMPETITIONS VIEW =====
 function CompetitionsView({ onNav }) {
-  const [competitions, setCompetitions] = useState(getCompetitions());
+  const [competitions, setCompetitions] = useState([]);
   const { showToast } = useApp();
 
-  function refresh() { setCompetitions(getCompetitions()); }
+  function refresh() { getCompetitions().then(setCompetitions); }
+  useEffect(() => { refresh(); }, []);
 
-  function handleDelete(id) {
-    deleteCompetition(id);
+  async function handleDelete(id) {
+    await deleteCompetition(id);
     refresh();
     showToast('Competition deleted', 'info');
   }
 
-  function handleStatus(id, status) {
-    updateCompetition(id, { status });
+  async function handleStatus(id, status) {
+    await updateCompetition(id, { status });
     refresh();
     showToast(`Competition set to ${status}`, 'success');
   }
@@ -414,10 +423,12 @@ function CompetitionsView({ onNav }) {
 function CompetitionForm({ onNav, editTarget }) {
   const { showToast } = useApp();
   const isEdit = !!editTarget;
-  const allQuestions = getQuestions().filter(q => q.enabled);
+  const [allQuestions, setAllQuestions] = useState([]);
   const [form, setForm] = useState(editTarget ? { ...editTarget } : {
     title: '', description: '', duration: 30, questions: [], status: 'upcoming',
   });
+
+  useEffect(() => { getQuestions().then(qs => setAllQuestions(qs.filter(q => q.enabled))); }, []);
 
   function handle(e) { setForm(f => ({ ...f, [e.target.name]: e.target.name === 'duration' ? Number(e.target.value) : e.target.value })); }
 
@@ -428,11 +439,11 @@ function CompetitionForm({ onNav, editTarget }) {
     }));
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     if (!form.title || form.questions.length === 0) { showToast('Add title and at least 1 question', 'error'); return; }
-    if (isEdit) { updateCompetition(editTarget.id, form); showToast('Competition updated!', 'success'); }
-    else { addCompetition(form); showToast('Competition created!', 'success'); }
+    if (isEdit) { await updateCompetition(editTarget.id, form); showToast('Competition updated!', 'success'); }
+    else { await addCompetition(form); showToast('Competition created!', 'success'); }
     onNav(VIEWS.COMPETITIONS);
   }
 
@@ -510,8 +521,13 @@ function CompetitionForm({ onNav, editTarget }) {
 
 // ===== PARTICIPANTS VIEW =====
 function ParticipantsView() {
-  const users = getUsers();
-  const submissions = getSubmissions();
+  const [users, setUsers] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+
+  useEffect(() => {
+    getUsers().then(setUsers);
+    getSubmissions().then(setSubmissions);
+  }, []);
 
   return (
     <div className="animate-in">
@@ -560,10 +576,16 @@ function ParticipantsView() {
 
 // ===== SUBMISSIONS VIEW =====
 function SubmissionsView() {
-  const submissions = getSubmissions();
-  const users = getUsers();
-  const questions = getQuestions();
+  const [submissions, setSubmissions] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [questions, setQuestions] = useState([]);
   const [filter, setFilter] = useState('all');
+
+  useEffect(() => {
+    getSubmissions().then(setSubmissions);
+    getUsers().then(setUsers);
+    getQuestions().then(setQuestions);
+  }, []);
 
   const filtered = filter === 'all' ? submissions : submissions.filter(s => s.isCorrect === (filter === 'correct'));
 
@@ -614,9 +636,20 @@ function SubmissionsView() {
 
 // ===== ADMIN LEADERBOARD =====
 function AdminLeaderboard() {
-  const competitions = getCompetitions();
-  const [selectedId, setSelectedId] = useState(competitions[0]?.id);
-  const board = selectedId ? getLeaderboard(selectedId) : [];
+  const [competitions, setCompetitions] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [board, setBoard] = useState([]);
+
+  useEffect(() => {
+    getCompetitions().then(cs => {
+      setCompetitions(cs);
+      if (cs.length > 0) setSelectedId(cs[0].id);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (selectedId) getLeaderboard(selectedId).then(setBoard);
+  }, [selectedId]);
 
   return (
     <div className="animate-in">
