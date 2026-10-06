@@ -2,15 +2,29 @@ import { useState, useEffect } from 'react';
 import { getLeaderboard, getCompetitions, getCompetitionById } from './store';
 
 export function LeaderboardPage({ competitionId: initialCompId }) {
-  const [competitions] = useState(getCompetitions());
-  const [selectedId, setSelectedId] = useState(initialCompId || (getCompetitions()[0]?.id));
+  const [competitions, setCompetitions] = useState([]);
+  const [selectedId, setSelectedId] = useState(initialCompId || null);
   const [board, setBoard] = useState([]);
+  const [comp, setComp] = useState(null);
 
   useEffect(() => {
-    if (selectedId) setBoard(getLeaderboard(selectedId));
-  }, [selectedId]);
+    getCompetitions().then(cs => {
+      setCompetitions(cs);
+      if (!selectedId && cs.length > 0) {
+        setSelectedId(cs[0].id);
+      }
+    });
+  }, []);
 
-  const comp = getCompetitionById(selectedId);
+  useEffect(() => {
+    if (selectedId) {
+      getLeaderboard(selectedId).then(setBoard);
+      getCompetitionById(selectedId).then(setComp);
+    } else {
+      setBoard([]);
+      setComp(null);
+    }
+  }, [selectedId]);
 
   return (
     <div style={{ minHeight: 'calc(100vh - 64px)', background: 'var(--bg-primary)', padding: '32px 0' }}>

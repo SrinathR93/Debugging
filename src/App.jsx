@@ -1,15 +1,11 @@
 import { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context';
-import { initStore } from './store';
 import { AuthPage } from './AuthPage';
 import { Navbar } from './Navbar';
 import { ParticipantDashboard } from './ParticipantDashboard';
 import { CompetitionRoom } from './CompetitionRoom';
 import { LeaderboardPage } from './LeaderboardPage';
 import { AdminDashboard } from './AdminDashboard';
-
-// Init localStorage store with seed data
-initStore();
 
 function Toast() {
   const { toast } = useApp();

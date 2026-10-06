@@ -18,11 +18,14 @@ export async function getUsers() {
 
 export async function registerUser(name, email, password) {
   if (email === ADMIN_USER.email) return { error: 'Email already taken' };
-  const { data: existing } = await supabase.from('users').select('id').eq('email', email).single();
+  const { data: existing } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
   if (existing) return { error: 'Email already registered' };
   const user = { id: 'u_' + Date.now(), name, email, password, role: 'participant', joined_at: new Date().toISOString() };
   const { error } = await supabase.from('users').insert(user);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error('registerUser error:', error);
+    return { error: error.message };
+  }
   return { user: { ...user, joinedAt: user.joined_at, password: undefined } };
 }
 
@@ -30,8 +33,8 @@ export async function loginUser(email, password) {
   if (email === ADMIN_USER.email && password === ADMIN_USER.password) {
     return { user: { ...ADMIN_USER, password: undefined } };
   }
-  const { data, error } = await supabase.from('users').select('*').eq('email', email).eq('password', password).single();
-  if (error || !data) return { error: 'Invalid email or password' };
+  const { data, error } = await supabase.from('users').select('*').eq('email', email).eq('password', password).maybeSingle();
+  if (error || !data) return { error: error ? error.message : 'Invalid email or password' };
   return { user: { ...data, joinedAt: data.joined_at, password: undefined } };
 }
 
@@ -56,7 +59,7 @@ export async function deleteQuestion(id) {
 }
 
 export async function getQuestionById(id) {
-  const { data } = await supabase.from('questions').select('*').eq('id', id).single();
+  const { data } = await supabase.from('questions').select('*').eq('id', id).maybeSingle();
   return data || null;
 }
 
@@ -103,7 +106,7 @@ export async function deleteCompetition(id) {
 }
 
 export async function getCompetitionById(id) {
-  const { data } = await supabase.from('competitions').select('*').eq('id', id).single();
+  const { data } = await supabase.from('competitions').select('*').eq('id', id).maybeSingle();
   if (!data) return null;
   return { ...data, questions: data.questions || [], startTime: data.start_time, createdAt: data.created_at };
 }
@@ -128,7 +131,7 @@ export async function submitAnswer(userId, competitionId, questionId, userAnswer
 
   // Check for existing submission first (lock answer after submit)
   const { data: existing } = await supabase.from('submissions')
-    .select('*').eq('user_id', userId).eq('competition_id', competitionId).eq('question_id', questionId).single();
+    .select('*').eq('user_id', userId).eq('competition_id', competitionId).eq('question_id', questionId).maybeSingle();
 
   if (existing) {
     return { isCorrect: existing.is_correct, marks: existing.marks, correctAnswer: q.answer, explanation: q.explanation };
